@@ -1,5 +1,6 @@
 import sqlite3
 import logging
+from pathlib import Path
 from src.config import get_settings
 from typing import List, Dict, Any
 
@@ -18,6 +19,10 @@ class OrderManager:
 
     def init_db(self):
         """Initialize SQLite database with required tables"""
+
+        db_file = Path(self.db_path)
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             # Table for seen orders with auto-cleanup
