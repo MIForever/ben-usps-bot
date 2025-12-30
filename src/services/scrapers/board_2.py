@@ -58,6 +58,9 @@ class LoadScraper:
         state = stop.get('state', '').upper()
         zipcode = stop.get('zipcode', '')
         
+        if not city or not state:
+            return None
+        
         for city_name in self.cities_list:
             if city_name in city or city_name in f"{city} {state}".upper():
                 city = city_name
@@ -70,7 +73,10 @@ class LoadScraper:
         if not stops:
             return ["No stops information"]
         
-        return [self._format_stop_location(stop) for stop in stops]
+        formatted = [self._format_stop_location(stop) for stop in stops]
+        valid_stops = [s for s in formatted if s is not None]
+        
+        return valid_stops if valid_stops else ["No valid stops"]
 
     def _extract_pickup_time(self, job: Dict) -> str:
         """Extract pickup time from job data"""
@@ -138,13 +144,18 @@ class LoadScraper:
         has_miles = job.get('total_miles')
         has_pickup = any(job.get(f) for f in ['pickup_start_datetime', 'pickup_end_datetime', 'pick_up_datetime'])
         has_delivery = any(job.get(f) for f in ['delivery_start_datetime', 'delivery_end_datetime', 'delivery_datetime'])
-        has_stops = job.get('stops')
+        stops = job.get('stops', [])
         
-        has_appointments = False
-        if has_stops:
-            has_appointments = any(stop.get('appointment_start_time') for stop in has_stops)
+        if not stops:
+            return False
         
-        return any([has_miles, has_pickup, has_delivery, has_stops, has_appointments])
+        valid_stops = [s for s in stops if s.get('city') and s.get('state')]
+        if not valid_stops:
+            return False
+        
+        has_appointments = any(stop.get('appointment_start_time') for stop in stops)
+        
+        return any([has_miles, has_pickup, has_delivery, has_appointments])
 
     def get_new_entries(self) -> List[Dict[str, Any]]:
         """Fetch new job listings from API"""
